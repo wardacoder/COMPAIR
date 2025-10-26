@@ -142,44 +142,6 @@ COMPAIR/
 If you prefer to view static visuals instead, all screenshots are available in the repository at:  
 📂 [`COMPAIR/images`](./images)
 
-
-## 📸 Application Walkthrough
-
-### Landing Experience
-![Home Page](images/1_homepage.png)
-*Clean, purpose-driven introduction to COMPAIR's capabilities*
-
-### Comparison Setup
-![Compare Interface](images/2_comparepage.png)
-*Category selection and item input with real-time validation*
-
-### Personalization Panel
-![Preferences](images/4_personalization.png)
-*Optional fields to guide AI toward user-specific recommendations*
-
-### Results View
-![Structured Output](images/5.4_usecase_personalized_winner.png)
-*Comparison table, pros/cons, and personalized winner with reasoning*
-
-### Follow-Up Interaction
-![Context Chat](images/5.5_usecase_follow-up_chat.png)
-*Ask deeper questions while maintaining comparison context*
-
-<details>
-<summary>📷 View More Screenshots</summary>
-
-#### Theme Toggle
-![Light Mode](images/3_lightmodeon.png)
-
-#### Use Case Flow
-![Use Case Step 1](images/5.1_usecase.png)
-![Use Case Step 2](images/5.2_usecase.png)
-
-#### Additional Features
-![Share & Save](images/5.5_additional_features.png)
-
-</details>
-
 ---
 
 ## 🧱 Backend Architecture
@@ -323,4 +285,5 @@ Recruiters and collaborators are welcome to explore the code for review and eval
 🔗 [LinkedIn](https://www.linkedin.com/in/wardaulhasan) | [GitHub](https://github.com/wardacoder)
 
 > *COMPAIR reflects my commitment to designing systems where intelligence meets structure: practical, purposeful, and human-centered.*
+
 
