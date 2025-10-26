@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+  tailwind.config = {
+    darkMode: 'class'
+  }
+</script>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2563EB" />
+    <meta
+      name="description"
+      content="CompareMate – AI-powered comparison assistant for products, courses, countries and more"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <title>CompareMate - AI Comparison Assistant</title>
+
+    <style>
+      /* Smooth transitions for theme changes */
+      * {
+        transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+      }
+
+      /* Custom scrollbar */
+      .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .scrollbar-thin::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #93c5fd;
+        border-radius: 3px;
+      }
+
+      .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #475569;
+      }
+
+      /* Dark mode base styles */
+      .dark {
+        color-scheme: dark;
+      }
+
+      /* Smooth gradient animation */
+      @keyframes shine {
+        0% { background-position: 0% center; }
+        100% { background-position: 200% center; }
+      }
+
+      /* Pulse animation for winner badge */
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      /* Remove spinner arrows from number inputs */
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      /* Focus visible for accessibility */
+      *:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+      }
+    </style>
+
+    <!-- Tailwind dark mode configuration -->
+    <script>
+      // Initialize theme before page loads to prevent flash
+      (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+
+  <body class="antialiased">
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
