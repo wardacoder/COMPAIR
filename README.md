@@ -128,16 +128,14 @@ COMPAIR/
 ## 🎥 Project Demo
 
 <p align="center">
-  <a href="https://youtu.be/200wY4brWrg" target="_blank">
-    <img src="https://img.youtube.com/vi/200wY4brWrg/0.jpg" alt="COMPAIR Demo" width="700">
+  <a href="https://youtu.be/z6a9f1jB2SI" target="_blank">
+    <img src="https://img.youtube.com/vi/z6a9f1jB2SI/0.jpg" alt="COMPAIR Demo" width="700">
   </a>
 </p>
 
 <p align="center">
   ▶ <a href="https://youtu.be/z6a9f1jB2SI" target="_blank"><b>Click here to watch the full COMPAIR demo on YouTube</b></a>
 </p>
-
----
 
 If you prefer to view static visuals instead, all screenshots are available in the repository at:  
 📂 [`COMPAIR/images`](./images)
@@ -285,6 +283,7 @@ Recruiters and collaborators are welcome to explore the code for review and eval
 🔗 [LinkedIn](https://www.linkedin.com/in/wardaulhasan) | [GitHub](https://github.com/wardacoder)
 
 > *COMPAIR reflects my commitment to designing systems where intelligence meets structure: practical, purposeful, and human-centered.*
+
 
 
 
