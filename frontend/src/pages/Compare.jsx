@@ -127,7 +127,7 @@ export default function Compare() {
       {/* Category Tabs & Form */}
       <CategoryTabs selected={category} onChange={setCategory} />
       
-      {/* ✅ UPDATED: Pass onCompare and isComparing props */}
+      {/* Pass onCompare and isComparing props */}
       <CompareForm
         category={category}
         items={items}
@@ -138,8 +138,8 @@ export default function Compare() {
         setUserPreferences={setUserPreferences}
         showPreferences={showPreferences}
         setShowPreferences={setShowPreferences}
-        onCompare={handleCompare}  // ✅ NEW
-        isComparing={loading}       // ✅ NEW
+        onCompare={handleCompare}  
+        isComparing={loading}       
       />
 
       {/* Results Section */}
@@ -162,4 +162,5 @@ export default function Compare() {
       )}
     </div>
   );
+
 }
