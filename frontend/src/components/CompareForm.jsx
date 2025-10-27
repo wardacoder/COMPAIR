@@ -11,17 +11,17 @@ export default function CompareForm({
   setUserPreferences,
   showPreferences,
   setShowPreferences,
-  onCompare,  // ✅ NEW: Accept onCompare function
-  isComparing  // ✅ NEW: Accept loading state
+  onCompare,  
+  isComparing  
 }) {
-  // ✅ UPDATED: Category configuration with category-specific use case labels
+  
   const categoryText = {
     gadgets: {
       itemLabel: "Gadget",
       placeholder: "e.g., iPhone 15 Pro Max, Galaxy S24 Ultra",
       hint: "Be specific with model names and specs. Compare similar items (e.g., iPhone 15 vs Samsung S24, not iPhone vs Car)",
       priorityOptions: ["Price", "Performance", "Battery Life", "Camera Quality", "Display", "Build Quality", "Brand", "Features"],
-      useCaseLabel: "How will you use it?",  // ✅ Gadget-specific
+      useCaseLabel: "How will you use it?",  
       useCasePlaceholder: "e.g., gaming, photography, work, daily use"
     },
     cars: {
@@ -29,7 +29,7 @@ export default function CompareForm({
       placeholder: "e.g., Tesla Model 3, Toyota Camry 2024",
       hint: "Include full model name and year. Compare vehicles of similar types (e.g., Tesla Model 3 vs BMW 3 Series)",
       priorityOptions: ["Price", "Fuel Efficiency", "Safety", "Performance", "Reliability", "Features", "Comfort", "Cargo Space"],
-      useCaseLabel: "What's your driving need?",  // ✅ Car-specific
+      useCaseLabel: "What's your driving need?",  
       useCasePlaceholder: "e.g., daily commute, family trips, business travel, off-roading"
     },
     technologies: {
@@ -37,7 +37,7 @@ export default function CompareForm({
       placeholder: "e.g., React, Python, AWS, ChatGPT",
       hint: "Use full names of languages, frameworks, or platforms. Compare similar tech (e.g., React vs Vue, not React vs Java)",
       priorityOptions: ["Learning Curve", "Performance", "Community Support", "Job Market", "Ecosystem", "Scalability", "Documentation", "Cost"],
-      useCaseLabel: "What will you build?",  // ✅ Tech-specific
+      useCaseLabel: "What will you build?",  
       useCasePlaceholder: "e.g., startup project, enterprise app, personal website, mobile app"
     },
     destinations: {
@@ -45,7 +45,7 @@ export default function CompareForm({
       placeholder: "e.g., Japan, Maldives, New York City",
       hint: "Use full country or city names. Compare similar destination types (e.g., beach destinations, cities, countries)",
       priorityOptions: ["Cost", "Safety", "Weather", "Attractions", "Culture", "Food", "Visa Requirements", "Activities"],
-      useCaseLabel: "What type of trip?",  // ✅ Destination-specific
+      useCaseLabel: "What type of trip?",  
       useCasePlaceholder: "e.g., honeymoon, family vacation, solo adventure, business trip"
     },
     shows: {
@@ -53,7 +53,7 @@ export default function CompareForm({
       placeholder: "e.g., Breaking Bad, Game of Thrones S1",
       hint: "Include show titles and season if comparing seasons.",
       priorityOptions: ["Plot", "Acting", "Production Quality", "Genre", "Length", "Ratings", "Rewatch Value", "Ending"],
-      useCaseLabel: "What's your viewing style?",  // ✅ Show-specific
+      useCaseLabel: "What's your viewing style?",  
       useCasePlaceholder: "e.g., binge watching, casual viewing, background noise, serious watching"
     },
     other: {
@@ -343,4 +343,5 @@ export default function CompareForm({
       </div>
     </div>
   );
+
 }
