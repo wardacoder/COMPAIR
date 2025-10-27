@@ -57,7 +57,6 @@ export default function ResultDisplay({ result, onSave, onExport, onReset }) {
 
   if (!result) return null;
 
-  // ✅ FIXED: Handle short messages with centered, consistent styling
   if (result.message) {
     return (
       <div className="w-full max-w-4xl mt-10 mx-auto">
@@ -420,4 +419,5 @@ export default function ResultDisplay({ result, onSave, onExport, onReset }) {
       )}
     </div>
   );
+
 }
