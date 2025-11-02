@@ -14,3 +14,7 @@ build/
 .vscode/
 .idea/
 *.log
+
+# Backup files
+backups/
+data/postgresql_data

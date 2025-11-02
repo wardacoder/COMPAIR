@@ -1,9 +1,6 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-import os, json
-from typing import List, Optional
+import json
 from datetime import datetime
 import logging
 import uuid
@@ -15,233 +12,155 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_community.chat_message_histories import ChatMessageHistory
 
+# Prompt imports
+from prompt.prompt import (
+    get_comparison_prompt,
+    get_followup_prompt,
+    get_winner_instructions_with_preferences,
+    get_winner_instructions_without_preferences
+)
+
+# Constants imports
+from utilities.constants import (
+    OPENAI_API_KEY,
+    OPENAI_MODEL_NAME,
+    OPENAI_TEMPERATURE,
+    APP_TITLE,
+    CORS_ORIGINS,
+    HISTORY_FILE,
+    SHARED_FILE,
+    SERVER_HOST,
+    SERVER_PORT,
+    SHARE_URL_BASE,
+    SHARE_ID_LENGTH,
+    MIN_ITEMS_TO_COMPARE,
+    MIN_ITEM_LENGTH
+)
+
+# Storage imports
+from utilities.storage import (
+    load_history,
+    save_history,
+    load_shared,
+    save_shared,
+    increment_shared_view_count,
+    conversation_memory,
+    save_conversation_to_db,
+    get_conversation_from_db,
+    add_conversation_message,
+    get_cached_comparison_result,
+    save_cached_comparison,
+    delete_history_item,
+)
+
+# Brave Search imports
+from utilities.brave_search import (
+    search_items,
+    format_search_results_for_prompt
+)
+
+# Database imports
+from database.connection import init_db
+from database.repository import (
+    get_trending_shared,
+    get_most_compared_items,
+    get_category_stats,
+    cleanup_expired_shares,
+    cleanup_expired_cache,
+)
+
+# Models imports
+from models.model import (
+    UserPreferences,
+    CompareRequest,
+    SaveComparisonRequest,
+    ShareComparisonRequest,
+    FollowUpRequest,
+    ComparisonOutput
+)
+
 # ---------- LOGGING SETUP ---------- #
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------- ENV SETUP ---------- #
-load_dotenv()
-openai_api_key = os.getenv("OPENAI_API_KEY")
-logger.info(f"OpenAI key loaded successfully: {bool(openai_api_key)}")
+logger.info(f"OpenAI key loaded successfully: {bool(OPENAI_API_KEY)}")
+
+# ---------- DATABASE INITIALIZATION ---------- #
+init_db()
+logger.info("Database initialized")
 
 # ---------- FASTAPI APP ---------- #
-app = FastAPI(title="CompareMate API")
+app = FastAPI(title=APP_TITLE)
 
 # ---------- CORS ---------- #
-origins = [
-    "http://localhost:3000",
-    "https://comparemate.com"
-]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ---------- DATA STORAGE ---------- #
-HISTORY_FILE = "comparison_history.json"
-SHARED_FILE = "shared_comparisons.json"
-
-for file in [HISTORY_FILE, SHARED_FILE]:
-    if not os.path.exists(file):
-        with open(file, "w") as f:
-            json.dump({}, f)
-
-def load_history():
-    with open(HISTORY_FILE, "r") as f:
-        return json.load(f)
-
-def save_history(data):
-    with open(HISTORY_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-def load_shared():
-    with open(SHARED_FILE, "r") as f:
-        return json.load(f)
-
-def save_shared(data):
-    with open(SHARED_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-# ---------- MEMORY STORAGE FOR FOLLOW-UPS ---------- #
-conversation_memory = {}
-
-# ---------- PYDANTIC MODELS ---------- #
-
-class UserPreferences(BaseModel):
-    priorities: Optional[List[str]] = Field(
-        default=None,
-        description="Features user cares about most"
-    )
-    budget: Optional[str] = Field(
-        default=None, 
-        description="Budget constraint"
-    )
-    use_case: Optional[str] = Field(
-        default=None, 
-        description="How user plans to use it"
-    )
-
-class CompareRequest(BaseModel):
-    category: str
-    items: List[str]
-    criteria: Optional[str] = None
-    user_preferences: Optional[UserPreferences] = None
-
-class SaveComparisonRequest(BaseModel):
-    user_id: str
-    category: str
-    items: List[str]
-    result: dict
-
-class ShareComparisonRequest(BaseModel):
-    category: str
-    items: List[str]
-    result: dict
-    user_id: Optional[str] = None
-
-class FollowUpRequest(BaseModel):
-    comparison_id: str
-    question: str
-
-class ComparisonOutput(BaseModel):
-    introduction: Optional[str] = Field(
-        default=None, 
-        description="2-3 sentence introduction to the comparison"
-    )
-    table: Optional[List[dict]] = Field(
-        default=None, 
-        description="List of comparison features as dictionaries"
-    )
-    pros: Optional[List[str]] = Field(
-        default=None, 
-        description="List of 3-5 specific advantages"
-    )
-    cons: Optional[List[str]] = Field(
-        default=None, 
-        description="List of 3-5 specific disadvantages"
-    )
-    recommendation: Optional[str] = Field(
-        default=None, 
-        description="Clear, balanced recommendation"
-    )
-    personalized_winner: Optional[str] = Field(
-        default=None, 
-        description="Winner based on user preferences"
-    )
-    winner_reason: Optional[str] = Field(
-        default=None,
-        description="Explanation of why this item won"
-    )
-    message: Optional[str] = Field(
-        default=None, 
-        description="Error or informational message"
-    )
-
 # ---------- LANGCHAIN SETUP ---------- #
 
-llm = ChatOpenAI(
-    model="gpt-4o",
-    temperature=0.7,
-    api_key=openai_api_key
-)
+# Only initialize LLM if API key is available
+if OPENAI_API_KEY:
+    llm = ChatOpenAI(
+        model=OPENAI_MODEL_NAME,
+        temperature=OPENAI_TEMPERATURE,
+        api_key=OPENAI_API_KEY
+    )
+else:
+    logger.warning("⚠️  OPENAI_API_KEY not set. LLM features will be disabled.")
+    llm = None
 
 parser = PydanticOutputParser(pydantic_object=ComparisonOutput)
-
-# ✅ SIMPLE & CLEAN PROMPT
-comparison_prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are a smart AI comparison assistant.
-
-Your task is to provide a detailed comparison between the items the user provides.
-
-📋 OUTPUT FORMAT:
-
-Return a JSON object with these fields:
-
-1. "introduction": A 4 to 5 sentences introduction to the comparison. Use the actual item names (e.g., "Let's compare iPhone 15 and Samsung S24...")
-
-2. "table": An array of feature comparisons. Each entry should be a dictionary with:
-   - "feature": The feature name (e.g., "Price", "Display", "Battery")
-   - One key for EACH item using its exact name (e.g., "iPhone 15": "$799", "Samsung S24": "$799")
-   
-   Example:
-   [
-     {{"feature": "Price", "iPhone 15": "$799", "Samsung S24": "$799"}},
-     {{"feature": "Display", "iPhone 15": "6.1 inch OLED", "Samsung S24": "6.2 inch AMOLED"}}
-   ]
-
-3. "pros": An array of advantages. Format each as "[Item Name]: [advantage]"
-   Example: ["iPhone 15: Excellent ecosystem integration", "Samsung S24: Superior display technology"]
-
-4. "cons": An array of disadvantages. Format each as "[Item Name]: [disadvantage]"
-   Example: ["iPhone 15: Limited customization", "Samsung S24: Bloatware on device"]
-
-For each item there should be 3 specific pros and 3 specific cons.
-
-5. "recommendation": A balanced recommendation using the actual item names and keep it around 4 to 5 sentences long.
-     
-🏆 WINNER RULES:
-
-{winner_instructions}
-
-📱 CATEGORIES:
-
-The web app has these categories:
-- Gadgets (smartphones, laptops, tablets, wearables, etc.). You should expect brand names, model names and specific versions.
-- Cars (vehicles of all types)
-- Technologies (programming languages, frameworks, software, etc.)
-- Destinations (countries, cities, travel locations)
-- Shows (TV series, movies, etc.)
-- Other (anything else)
-
-✅ VALIDATION RULES:
-
-When the category is Gadgets, Cars, Technologies, Destinations, or Shows:
-- Make sure the items actually belong to that category
-- If they don't fit, return: {{"message": "These items don't match the [category] category. Please check your selection."}}
-
-When the category is "Other":
-- Only reject if items are nonsensical (like single letters "f" vs "d")
-
-🚫 ALWAYS REJECT:
-- Single letters or very short gibberish (e.g., "f" vs "d", "xyz" vs "abc")
-Return: {{"message": "Please enter clear, distinct, and comparable items."}}
-
-⚠️ CRITICAL: Always use the ACTUAL item names provided by the user. Never use "Item 1", "Item 2", etc.
-
-{format_instructions}"""),
-    ("user", """Category: {category}
-Items to compare: {items}
-{preferences_text}
-
-Please compare these items: {items}""")
-])
-
-# Follow-up prompt (unchanged)
-followup_prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are an expert assistant helping users with follow-up questions about comparisons.
-
-Context: The user previously compared {items} in the {category} category.
-
-Original Comparison Result:
-{comparison_result}
-
-Your task: Answer the user's specific question about this comparison.
-- Be concise and direct
-- Reference specific data from the comparison
-- Use the actual item names, not "Item 1", "Item 2"
-- Provide actionable insights
-- If question is outside the comparison scope, politely mention available information"""),
-    ("user", "{question}")
-])
 
 # ---------- ENDPOINTS ---------- #
 
 @app.get("/")
 def root():
     return {"message": "Compair API is running! 🚀"}
+
+
+@app.get("/health")
+def health_check():
+    """Basic health check endpoint."""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0"
+    }
+
+
+@app.get("/health/db")
+def health_db():
+    """Database health check endpoint."""
+    try:
+        from database.connection import engine
+        from sqlalchemy import text
+        
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            
+        # Get connection pool stats
+        pool = engine.pool
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "pool_size": pool.size(),
+            "checked_in_connections": pool.checkedin(),
+            "checked_out_connections": pool.checkedout(),
+            "overflow": pool.overflow(),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "unhealthy", "database": "disconnected", "error": str(e)}
+        )
 
 @app.post("/compare")
 async def compare_items(data: CompareRequest):
@@ -252,13 +171,13 @@ async def compare_items(data: CompareRequest):
         logger.info(f"Comparison request: {data.category}, items: {data.items}")
         
         # Basic validation
-        if not data.items or len(data.items) < 2:
+        if not data.items or len(data.items) < MIN_ITEMS_TO_COMPARE:
             return {
                 "message": "Please provide at least 2 items to compare."
             }
         
         # Check for very short items (gibberish)
-        if any(len(item.strip()) < 2 for item in data.items):
+        if any(len(item.strip()) < MIN_ITEM_LENGTH for item in data.items):
             logger.info("Rejected: Items too short")
             return {
                 "message": "Please enter clear, distinct, and comparable items."
@@ -271,6 +190,17 @@ async def compare_items(data: CompareRequest):
             return {
                 "message": "Please enter different items to compare."
             }
+        
+        # Check cache first
+        user_prefs_dict = data.user_preferences.dict() if data.user_preferences else None
+        cached_result = get_cached_comparison_result(data.category, data.items, user_prefs_dict)
+        
+        if cached_result:
+            logger.info("Returning cached comparison result")
+            cached_result["comparison_id"] = str(uuid.uuid4())
+            cached_result["items"] = data.items
+            cached_result["category"] = data.category
+            return cached_result
         
         # Check if user provided preferences
         has_preferences = False
@@ -293,40 +223,57 @@ async def compare_items(data: CompareRequest):
         
         # Dynamic winner instructions
         if has_preferences:
-            winner_instructions = """The user HAS provided preferences.
-
-You MUST include:
-- "personalized_winner": The actual item name that best matches their preferences
-- "winner_reason": 2-3 sentences explaining WHY this item won based on their specific needs
-
-Example:
-"personalized_winner": "iPhone 15"
-"winner_reason": "Based on your priority for camera quality and ecosystem, the iPhone 15 offers the best overall experience."
-"""
+            winner_instructions = get_winner_instructions_with_preferences()
         else:
-            winner_instructions = """The user has NOT provided any preferences.
-
-You MUST NOT include a personalized winner. Instead:
-- Set "personalized_winner": null
-- Set "winner_reason": null  
-- Provide a balanced "recommendation" that works for different use cases
-
-Example recommendation:
-"The iPhone 15 is ideal for users in the Apple ecosystem. The Samsung S24 offers more customization and flexibility."
-"""
+            winner_instructions = get_winner_instructions_without_preferences()
         
         logger.info(f"Has preferences: {has_preferences}")
         
-        # Create and invoke chain
-        chain = comparison_prompt | llm | parser
+        # Fetch real-time search results for all items using Brave Search
+        logger.info("🔍 Fetching search results from Brave Search API...")
+        search_results = search_items(data.items, data.category)
         
-        result = chain.invoke({
+        # Format search results for prompt
+        search_results_text = format_search_results_for_prompt(search_results)
+        
+        # Check if LLM is available
+        if not llm:
+            raise HTTPException(
+                status_code=503,
+                detail="LLM service is not available. Please set OPENAI_API_KEY environment variable."
+            )
+        
+        # Create comparison prompt function
+        create_comparison_messages = get_comparison_prompt(
+            winner_instructions=winner_instructions,
+            format_instructions=parser.get_format_instructions()
+        )
+        
+        # Create messages with user inputs and search results
+        messages = create_comparison_messages({
             "category": data.category,
             "items": ", ".join(data.items),
             "preferences_text": preferences_text,
-            "winner_instructions": winner_instructions,
-            "format_instructions": parser.get_format_instructions()
+            "search_results": search_results_text
         })
+        
+        # Log the full prompt including search results for debugging
+        logger.info("=" * 80)
+        logger.info("📝 PROMPT BEING SENT TO LLM:")
+        logger.info("=" * 80)
+        for i, msg in enumerate(messages):
+            msg_type = "SYSTEM" if hasattr(msg, 'content') and i == 0 else "USER"
+            logger.info(f"\n[{msg_type} MESSAGE {i+1}]:")
+            logger.info("-" * 80)
+            # Log full content - don't truncate to see complete search results
+            logger.info(msg.content)
+            logger.info(f"[Message length: {len(msg.content)} chars]")
+            logger.info("-" * 80)
+        logger.info("=" * 80)
+        
+        # Invoke LLM with messages and parse result
+        llm_response = llm.invoke(messages)
+        result = parser.parse(llm_response.content)
         
         # Convert to dict
         result_dict = result.dict()
@@ -345,7 +292,12 @@ Example recommendation:
         # Generate comparison ID
         comparison_id = str(uuid.uuid4())
         
-        # Store in memory for follow-ups
+        # Cache the result
+        save_cached_comparison(data.category, data.items, result_dict, user_prefs_dict)
+        
+        # Store in memory for follow-ups (for active sessions)
+        # Note: We don't save to DB yet because there's no user_id and no saved comparison yet
+        # The conversation will be saved to DB when the user saves the comparison via /save-comparison
         conversation_memory[comparison_id] = {
             "chat_history": ChatMessageHistory(),
             "original_comparison": result_dict,
@@ -369,19 +321,7 @@ Example recommendation:
 async def save_comparison(data: SaveComparisonRequest):
     """Save comparison to user history"""
     try:
-        history = load_history()
-        entry = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "category": data.category,
-            "items": data.items,
-            "result": data.result
-        }
-
-        if data.user_id not in history:
-            history[data.user_id] = []
-        history[data.user_id].append(entry)
-        save_history(history)
-
+        entry = save_history(data.user_id, data.category, data.items, data.result)
         logger.info(f"Comparison saved for user: {data.user_id}")
         return {"message": "Comparison saved successfully", "entry": entry}
     
@@ -393,26 +333,15 @@ async def save_comparison(data: SaveComparisonRequest):
 async def share_comparison(data: ShareComparisonRequest):
     """Create shareable link for comparison"""
     try:
-        share_id = str(uuid.uuid4())[:8]
+        share_id = str(uuid.uuid4())[:SHARE_ID_LENGTH]
+        comparison_id = data.result.get("comparison_id") if isinstance(data.result, dict) else None
         
-        shared_data = {
-            "share_id": share_id,
-            "category": data.category,
-            "items": data.items,
-            "result": data.result,
-            "created_at": datetime.utcnow().isoformat(),
-            "user_id": data.user_id,
-            "views": 0
-        }
-        
-        shared = load_shared()
-        shared[share_id] = shared_data
-        save_shared(shared)
+        save_shared(share_id, comparison_id, data.category, data.items, data.result, data.user_id)
         
         logger.info(f"Comparison shared - ID: {share_id}")
         
         return {
-            "share_url": f"https://compair.com/shared/{share_id}",
+            "share_url": f"{SHARE_URL_BASE}{share_id}",
             "share_id": share_id,
             "message": "Comparison shared successfully"
         }
@@ -425,17 +354,16 @@ async def share_comparison(data: ShareComparisonRequest):
 async def get_shared_comparison(share_id: str):
     """Retrieve shared comparison"""
     try:
-        shared = load_shared()
+        shared = load_shared(share_id)
         
-        if share_id not in shared:
+        if not shared:
             raise HTTPException(status_code=404, detail="Shared comparison not found")
         
-        comparison = shared[share_id]
-        comparison["views"] += 1
-        shared[share_id] = comparison
-        save_shared(shared)
+        # Increment view count
+        increment_shared_view_count(share_id)
+        shared["views"] += 1
         
-        return comparison
+        return shared
         
     except HTTPException:
         raise
@@ -444,14 +372,11 @@ async def get_shared_comparison(share_id: str):
         raise HTTPException(status_code=500, detail="Failed to retrieve comparison")
 
 @app.get("/history/{user_id}")
-def get_history(user_id: str):
+def get_history(user_id: str, limit: int = 100, offset: int = 0, category: str = None):
     """Retrieve user's comparison history"""
     try:
-        history = load_history()
-        if user_id not in history:
-            return {"user_id": user_id, "history": []}
-        
-        return {"user_id": user_id, "history": history[user_id]}
+        history = load_history(user_id, limit, offset, category)
+        return {"user_id": user_id, "history": history}
     
     except Exception as e:
         logger.error(f"Error retrieving history: {str(e)}")
@@ -463,36 +388,70 @@ async def ask_followup(request: FollowUpRequest):
     try:
         comparison_id = request.comparison_id
         
-        if comparison_id not in conversation_memory:
+        # Try to get from memory first (active session)
+        memory_data = conversation_memory.get(comparison_id)
+        
+        # If not in memory, try database
+        if not memory_data:
+            db_conversation = get_conversation_from_db(comparison_id)
+            if db_conversation:
+                memory_data = {
+                    "original_comparison": db_conversation["original_comparison"],
+                    "items": db_conversation["items"],
+                    "category": db_conversation["category"],
+                    "messages": db_conversation["messages"]
+                }
+        
+        if not memory_data:
             raise HTTPException(
                 status_code=404, 
                 detail="Comparison not found. Please create a comparison first."
             )
         
-        memory_data = conversation_memory[comparison_id]
         original_comparison = memory_data["original_comparison"]
-        chat_history = memory_data["chat_history"]
+        items = memory_data["items"]
+        category = memory_data["category"]
         
+        # Check if LLM is available
+        if not llm:
+            raise HTTPException(
+                status_code=503,
+                detail="LLM service is not available. Please set OPENAI_API_KEY environment variable."
+            )
+        
+        followup_prompt = get_followup_prompt()
         followup_chain = followup_prompt | llm
         
         response = followup_chain.invoke({
-            "items": ", ".join(memory_data["items"]),
-            "category": memory_data["category"],
+            "items": ", ".join(items),
+            "category": category,
             "comparison_result": json.dumps(original_comparison, indent=2),
             "question": request.question
         })
         
         answer = response.content
         
-        chat_history.add_user_message(request.question)
-        chat_history.add_ai_message(answer)
+        # Save to database
+        add_conversation_message(comparison_id, "user", request.question)
+        add_conversation_message(comparison_id, "assistant", answer)
+        
+        # Update memory if exists
+        if comparison_id in conversation_memory:
+            chat_history = conversation_memory[comparison_id]["chat_history"]
+            chat_history.add_user_message(request.question)
+            chat_history.add_ai_message(answer)
+            conversation_history_len = len(chat_history.messages)
+        else:
+            # Get from database
+            db_conv = get_conversation_from_db(comparison_id)
+            conversation_history_len = len(db_conv["messages"]) if db_conv else 0
         
         return {
             "answer": answer,
             "comparison_id": comparison_id,
-            "conversation_history": len(chat_history.messages)
+            "conversation_history": conversation_history_len
         }
-        
+    
     except HTTPException:
         raise
     except Exception as e:
@@ -502,42 +461,41 @@ async def ask_followup(request: FollowUpRequest):
 @app.get("/followup-history/{comparison_id}")
 async def get_followup_history(comparison_id: str):
     """Get conversation history for a comparison"""
-    if comparison_id not in conversation_memory:
-        raise HTTPException(status_code=404, detail="Comparison not found")
+    # Try memory first
+    if comparison_id in conversation_memory:
+        memory_data = conversation_memory[comparison_id]
+        chat_history = memory_data["chat_history"]
+        
+        history = []
+        for msg in chat_history.messages:
+            history.append({
+                "role": "user" if msg.type == "human" else "assistant",
+                "content": msg.content
+            })
+        
+        return {
+            "comparison_id": comparison_id,
+            "history": history
+        }
     
-    memory_data = conversation_memory[comparison_id]
-    chat_history = memory_data["chat_history"]
+    # Try database
+    db_conversation = get_conversation_from_db(comparison_id)
+    if db_conversation:
+        return {
+            "comparison_id": comparison_id,
+            "history": db_conversation["messages"]
+        }
     
-    history = []
-    for msg in chat_history.messages:
-        history.append({
-            "role": "user" if msg.type == "human" else "assistant",
-            "content": msg.content
-        })
-    
-    return {
-        "comparison_id": comparison_id,
-        "history": history
-    }
+    raise HTTPException(status_code=404, detail="Comparison not found")
 
-@app.delete("/history/{user_id}/{timestamp}")
-def delete_history_item(user_id: str, timestamp: str):
+@app.delete("/history/{user_id}/{comparison_id}")
+def delete_history_item_endpoint(user_id: str, comparison_id: str):
     """Delete specific comparison from history"""
     try:
-        history = load_history()
-        if user_id not in history:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        original_length = len(history[user_id])
-        history[user_id] = [
-            item for item in history[user_id] 
-            if item.get("timestamp") != timestamp
-        ]
-        
-        if len(history[user_id]) == original_length:
+        deleted = delete_history_item(user_id, comparison_id)
+        if not deleted:
             raise HTTPException(status_code=404, detail="Comparison not found")
         
-        save_history(history)
         return {"message": "Comparison deleted successfully"}
     
     except HTTPException:
@@ -546,6 +504,63 @@ def delete_history_item(user_id: str, timestamp: str):
         logger.error(f"Error deleting comparison: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to delete comparison")
 
+
+# ========== ANALYTICS ENDPOINTS ==========
+
+@app.get("/analytics/trending")
+async def get_trending():
+    """Get trending shared comparisons"""
+    try:
+        from database.connection import get_db_session
+        with get_db_session() as db:
+            trending = get_trending_shared(db, days=7, limit=10)
+            return [
+                {
+                    "share_id": item.share_id,
+                    "category": item.category,
+                    "items": item.items,
+                    "views": item.views,
+                    "created_at": item.created_at.isoformat()
+                }
+                for item in trending
+            ]
+    except Exception as e:
+        logger.error(f"Error getting trending: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get trending")
+
+
+@app.get("/analytics/popular-items")
+async def get_popular_items():
+    """Get most compared items"""
+    try:
+        from database.connection import get_db_session
+        with get_db_session() as db:
+            items = get_most_compared_items(db, limit=10)
+            return [
+                {
+                    "name": item.name,
+                    "category": item.category,
+                    "comparison_count": item.comparison_count
+                }
+                for item in items
+            ]
+    except Exception as e:
+        logger.error(f"Error getting popular items: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get popular items")
+
+
+@app.get("/analytics/category-stats")
+async def get_category_statistics(days: int = 30):
+    """Get category statistics"""
+    try:
+        from database.connection import get_db_session
+        with get_db_session() as db:
+            stats = get_category_stats(db, days=days)
+            return {"stats": stats}
+    except Exception as e:
+        logger.error(f"Error getting category stats: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get category stats")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=SERVER_HOST, port=SERVER_PORT)

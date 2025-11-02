@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MessageCircle, Send, Loader2 } from "lucide-react";
+import API_BASE from "../config/api";
 
 export default function FollowUpChat({ comparisonId, items }) {
   const [messages, setMessages] = useState([]);
@@ -22,7 +23,7 @@ export default function FollowUpChat({ comparisonId, items }) {
     setLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/ask-followup", {
+      const response = await fetch(`${API_BASE}/ask-followup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -6,6 +6,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { motion } from "framer-motion";
+import API_BASE from "../config/api";
 
 export default function Compare() {
   const [category, setCategory] = useState("other");
@@ -28,8 +29,6 @@ export default function Compare() {
     setUserPreferences({ priorities: [], budget: "", use_case: "" });
     setShowPreferences(false);
   }, [category]);
-
-  const API_BASE = "http://127.0.0.1:8000";
 
   const handleCompare = async () => {
     setLoading(true);
@@ -127,7 +126,7 @@ export default function Compare() {
       {/* Category Tabs & Form */}
       <CategoryTabs selected={category} onChange={setCategory} />
       
-      {/* Pass onCompare and isComparing props */}
+      {/* ✅ UPDATED: Pass onCompare and isComparing props */}
       <CompareForm
         category={category}
         items={items}
@@ -138,8 +137,8 @@ export default function Compare() {
         setUserPreferences={setUserPreferences}
         showPreferences={showPreferences}
         setShowPreferences={setShowPreferences}
-        onCompare={handleCompare}  
-        isComparing={loading}       
+        onCompare={handleCompare}  // ✅ NEW
+        isComparing={loading}       // ✅ NEW
       />
 
       {/* Results Section */}
@@ -162,5 +161,4 @@ export default function Compare() {
       )}
     </div>
   );
-
 }

@@ -14,6 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import FollowUpChat from "../components/FollowUpChat";
+import API_BASE from "../config/api";
 
 export default function ResultDisplay({ result, onSave, onExport, onReset }) {
   const [shareUrl, setShareUrl] = useState(null);
@@ -23,7 +24,7 @@ export default function ResultDisplay({ result, onSave, onExport, onReset }) {
   const handleShare = async () => {
     setShareLoading(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/share-comparison", {
+      const response = await fetch(`${API_BASE}/share-comparison`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -57,6 +58,7 @@ export default function ResultDisplay({ result, onSave, onExport, onReset }) {
 
   if (!result) return null;
 
+  // ✅ FIXED: Handle short messages with centered, consistent styling
   if (result.message) {
     return (
       <div className="w-full max-w-4xl mt-10 mx-auto">
@@ -419,5 +421,4 @@ export default function ResultDisplay({ result, onSave, onExport, onReset }) {
       )}
     </div>
   );
-
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import API_BASE from "../config/api";
 
 export default function History() {
   const [history, setHistory] = useState([]);
@@ -7,7 +8,7 @@ export default function History() {
   useEffect(() => {
     async function fetchHistory() {
       try {
-        const res = await fetch("http://127.0.0.1:8000/history/guest123");
+        const res = await fetch(`${API_BASE}/history/guest123`);
         const data = await res.json();
         setHistory(data.history || []);
       } catch (err) {
