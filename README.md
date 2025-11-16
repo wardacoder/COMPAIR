@@ -150,7 +150,7 @@ COMPAIR/
 
 ---
 
-## 🐳 Docker Deployment (Short and Simple)
+## 🐳 Docker Deployment
 
 COMPAIR includes a complete, ready-to-run Docker setup.
 
@@ -235,3 +235,4 @@ LinkedIn: https://www.linkedin.com/in/wardaulhasan
 GitHub: https://github.com/wardacoder  
 
 > COMPAIR reflects my goal to build systems where intelligence meets structure, practical purpose, and thoughtful design.
+
