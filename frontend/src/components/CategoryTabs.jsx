@@ -1,3 +1,4 @@
+// ✅ NEW CATEGORIES: gadgets, cars, technologies, destinations, shows, other
 const categories = ["gadgets", "cars", "technologies", "destinations", "shows", "other"];
 
 export default function CategoryTabs({ selected, onChange }) {
@@ -24,5 +25,4 @@ export default function CategoryTabs({ selected, onChange }) {
       </div>
     </div>
   );
-
 }
