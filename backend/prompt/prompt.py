@@ -1,5 +1,5 @@
 """
-Prompt templates for the CompareMate API.
+Prompt templates for the COMPAIR API.
 
 This module contains all prompt templates used by the LangChain LLM chains
 for comparison and follow-up question handling.
@@ -175,4 +175,5 @@ You MUST NOT include a personalized winner. Instead:
 Example recommendation:
 "The iPhone 15 is ideal for users in the Apple ecosystem. The Samsung S24 offers more customization and flexibility."
 """
+
 
