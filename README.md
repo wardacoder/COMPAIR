@@ -43,10 +43,10 @@ Choosing between multiple options usually means:
 - Follow-up answers stay relevant without restarting any session  
 
 ### 📊 Analytics Dashboard  
-- Dedicated dashboard page with time-range filtering (7, 30, 90 days)  
-- Displays total comparisons, category breakdowns, popular comparison pairs, and decision confidence metrics  
+- Built for Product Managers to monitor platform performance and user behaviour at a glance  
+- Time-range filtering (7, 30, 90 days) across total comparisons, category breakdowns, popular pairs, and decision confidence metrics  
 - Tracks user feedback statistics including ratings and improvement comments  
-- Integrated AI chat lets users ask natural-language questions about their comparison history  
+- Integrated AI chat lets Product Managers ask natural-language questions about comparison trends  
 
 ### ⭐ User Feedback System  
 - Collects star ratings for accuracy and winner match quality after each comparison  
@@ -57,7 +57,6 @@ Choosing between multiple options usually means:
 - A dedicated FastAPI MCP server runs alongside the main backend (port 8001)  
 - Exposes 9 structured tools covering dashboard metrics, feedback summaries, category insights, activity trends, and AI-generated reports  
 - Any MCP-compatible AI assistant (Grok, ChatGPT, Claude) can connect and query COMPAIR data programmatically  
-- `mcp_config.json` provided for easy AI assistant configuration  
 
 ### 📚 Comparison History and Sharing  
 - Stores all comparisons in PostgreSQL using JSONB  
@@ -97,6 +96,7 @@ COMPAIR is designed as a modular, scalable, and grounded full-stack system that 
 ### AI Reasoning Layer  
 - GPT-4o for structured and grounded comparisons  
 - Groq LLM for analytics chat responses via the MCP layer  
+- MCP flow: user query → Groq LLM → MCP tool call → PostgreSQL → structured AI response  
 - Real-time data from Brave Search  
 - Dynamic prompt construction using system and human messages  
 - Strict schema enforcement with PydanticOutputParser  
