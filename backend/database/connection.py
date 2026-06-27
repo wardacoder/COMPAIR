@@ -71,8 +71,45 @@ def get_db_session():
 def init_db():
     """Initialize database by creating all tables."""
     from database.models import Base
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created successfully")
+    from sqlalchemy.exc import OperationalError
+    
+    try:
+        # Test connection first
+        with engine.connect() as conn:
+            pass
+        Base.metadata.create_all(bind=engine)
+        db_display = DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else DATABASE_URL
+        logger.info(f"Database initialized successfully: {db_display}")
+    except OperationalError as e:
+        error_msg = str(e)
+        logger.error("=" * 60)
+        logger.error("DATABASE CONNECTION FAILED")
+        logger.error("=" * 60)
+        
+        if "postgres" in DATABASE_URL.lower() and ("could not translate host name" in error_msg.lower() or "postgres" in error_msg.lower()):
+            logger.error(f"Current DATABASE_URL: {DATABASE_URL}")
+            logger.error("")
+            logger.error("The hostname 'postgres' is typically used in Docker Compose.")
+            logger.error("Since you're running locally, you have two options:")
+            logger.error("")
+            logger.error("OPTION 1 (Recommended for local dev): Use SQLite")
+            logger.error("  Set environment variable: DATABASE_URL=sqlite:///./compair.db")
+            logger.error("  Or create a .env file in the backend/ directory with:")
+            logger.error("  DATABASE_URL=sqlite:///./compair.db")
+            logger.error("")
+            logger.error("OPTION 2: Use local PostgreSQL")
+            logger.error("  Change DATABASE_URL to: postgresql://user:password@localhost:5432/compair")
+            logger.error("  Make sure PostgreSQL is running locally")
+        else:
+            logger.error(f"Database connection error: {e}")
+            logger.error(f"Current DATABASE_URL: {DATABASE_URL}")
+        
+        logger.error("=" * 60)
+        raise
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"Current DATABASE_URL: {DATABASE_URL}")
+        raise
 
 
 def drop_db():

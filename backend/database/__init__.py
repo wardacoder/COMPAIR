@@ -7,12 +7,11 @@ connection management, and repository functions.
 
 from database.models import (
     Base,
-    User,
-    Comparison,
     SharedComparison,
-    Conversation,
+    Comparison,
     ComparisonCache,
-    Item
+    Item,
+    Feedback
 )
 
 from database.connection import (
@@ -26,12 +25,11 @@ from database.connection import (
 
 __all__ = [
     "Base",
-    "User",
-    "Comparison",
     "SharedComparison",
-    "Conversation",
+    "Comparison",
     "ComparisonCache",
     "Item",
+    "Feedback",
     "get_db",
     "get_db_session",
     "init_db",

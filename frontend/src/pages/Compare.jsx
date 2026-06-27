@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import CategoryTabs from "../components/CategoryTabs";
 import CompareForm from "../components/CompareForm";
 import ResultDisplay from "../components/ResultDisplay";
-import ThemeToggle from "../components/ThemeToggle";
+import FeedbackSection from "../components/FeedbackSection";
+import Navbar from "../Navbar";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { motion } from "framer-motion";
@@ -34,9 +35,18 @@ export default function Compare() {
     setLoading(true);
     setResult(null);
     try {
+      // Filter out empty items
+      const validItems = items.filter(item => item.trim().length > 0);
+      
+      if (validItems.length < 2) {
+        alert("Please enter at least 2 items to compare.");
+        setLoading(false);
+        return;
+      }
+
       const requestBody = {
         category,
-        items,
+        items: validItems,
         criteria,
         ...(showPreferences && (
           userPreferences.priorities.length > 0 ||
@@ -47,13 +57,41 @@ export default function Compare() {
         })
       };
 
+      console.log("📤 FRONTEND SENDING TO BACKEND:", requestBody);
+
       const res = await fetch(`${API_BASE}/compare`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
+      
       const data = await res.json();
       console.log("✅ FRONTEND RECEIVED FROM BACKEND:", data);
+      console.log("✅ Response has table:", Array.isArray(data.table) && data.table.length > 0);
+      
+      // Check if response has an error
+      if (!res.ok) {
+        const errorMsg = data.detail || data.message || "Failed to compare items. Please try again.";
+        alert(errorMsg);
+        setResult({ message: errorMsg });
+        return;
+      }
+      
+      // Check if response has a message (error message from backend)
+      if (data.message && !data.table) {
+        alert(data.message);
+        setResult(data);
+        return;
+      }
+      
+      // Validate that we have a table
+      if (!data.table || !Array.isArray(data.table) || data.table.length === 0) {
+        console.error("❌ Invalid response: no table data", data);
+        alert("The comparison did not return valid results. Please try again.");
+        setResult({ message: "The comparison did not return valid results. Please try again." });
+        return;
+      }
+      
       setResult(data);
 
       setTimeout(() => {
@@ -61,7 +99,8 @@ export default function Compare() {
       }, 300);
     } catch (err) {
       console.error("❌ Compare error:", err);
-      alert("Error while comparing items");
+      alert(`Error while comparing items: ${err.message}`);
+      setResult({ message: `Error: ${err.message}` });
     } finally {
       setLoading(false);
     }
@@ -103,13 +142,15 @@ export default function Compare() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center p-6 pb-20
+      className="min-h-screen flex flex-col
       bg-gradient-to-br from-blue-50 via-white to-sky-50
       dark:from-slate-950 dark:via-slate-900 dark:to-black 
-      text-center transition-colors duration-500"
+      transition-colors duration-500"
     >
-      {/* Theme Toggle */}
-      <ThemeToggle />
+      {/* Navigation Bar */}
+      <Navbar />
+      
+      <div className="flex flex-col items-center p-6 pb-20 text-center">
 
       {/* Header */}
       <motion.div
@@ -157,8 +198,16 @@ export default function Compare() {
             onExport={handleExportPDF}
             onReset={() => setResult(null)}
           />
+          
+          {/* Feedback Section - Always show after comparison */}
+          <FeedbackSection 
+            comparisonId={result.comparison_id || "temp-" + Date.now()} 
+            userId="guest123"
+            hasPersonalization={!!result.personalized_winner}
+          />
         </motion.div>
       )}
+      </div>
     </div>
   );
 }

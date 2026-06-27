@@ -34,54 +34,13 @@ def UUIDForeignKey(table_name):
         return Column(String(36), ForeignKey(table_name), nullable=False)
 
 
-class User(Base):
-    """User model for authentication and user management."""
-    __tablename__ = "users"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    email = Column(String(255), unique=True, nullable=True, index=True)
-    username = Column(String(255), nullable=True)
-    # Use JSONB for PostgreSQL (better performance), fallback to JSON for SQLite
-    preferences = Column(JSONB if os.getenv("DATABASE_URL", "").startswith("postgresql") else JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    comparisons = relationship("Comparison", back_populates="user", cascade="all, delete-orphan")
-    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
-
-
-class Comparison(Base):
-    """Comparison model for storing user comparison history."""
-    __tablename__ = "comparisons"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
-    category = Column(String(100), nullable=False, index=True)
-    # Use JSONB for PostgreSQL (better performance), fallback to JSON for SQLite
-    items = Column(JSONB if os.getenv("DATABASE_URL", "").startswith("postgresql") else JSON, nullable=False)
-    result = Column(JSONB if os.getenv("DATABASE_URL", "").startswith("postgresql") else JSON, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-
-    # Relationships
-    user = relationship("User", back_populates="comparisons")
-    shared_comparison = relationship("SharedComparison", back_populates="comparison", uselist=False)
-    conversation = relationship("Conversation", back_populates="comparison", uselist=False)
-    
-    # Composite indexes for common query patterns
-    __table_args__ = (
-        Index('ix_comparisons_user_category_created', 'user_id', 'category', 'created_at'),
-    )
-
-
 class SharedComparison(Base):
     """Shared comparison model for public sharing."""
     __tablename__ = "shared_comparisons"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     share_id = Column(String(8), unique=True, nullable=False, index=True)
-    comparison_id = Column(String(36), ForeignKey("comparisons.id"), nullable=True)
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    comparison_id = Column(String(36), nullable=True)  # Reference to comparison, not a foreign key
     category = Column(String(100), nullable=False)
     # Use JSONB for PostgreSQL (better performance), fallback to JSON for SQLite
     items = Column(JSONB if os.getenv("DATABASE_URL", "").startswith("postgresql") else JSON, nullable=False)
@@ -89,9 +48,6 @@ class SharedComparison(Base):
     views = Column(Integer, default=0)
     expires_at = Column(DateTime, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
-
-    # Relationships
-    comparison = relationship("Comparison", back_populates="shared_comparison")
     
     # Partial index for active shared comparisons (PostgreSQL-specific)
     __table_args__ = (
@@ -99,24 +55,28 @@ class SharedComparison(Base):
     )
 
 
-class Conversation(Base):
-    """Conversation model for storing follow-up question history."""
-    __tablename__ = "conversations"
+class Comparison(Base):
+    """Comparison model for storing comparison data and follow-up question history.
+    
+    This is the primary table for storing comparison data and analytics.
+    Each comparison creates an entry immediately for follow-ups and dashboard analytics.
+    """
+    __tablename__ = "comparisons"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    comparison_id = Column(String(36), ForeignKey("comparisons.id"), nullable=False, index=True)
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    comparison_id = Column(String(36), nullable=False, unique=True, index=True)  # Unique identifier for the comparison
     # Use JSONB for PostgreSQL (better performance), fallback to JSON for SQLite
     messages = Column(JSONB if os.getenv("DATABASE_URL", "").startswith("postgresql") else JSON, nullable=False)
     original_comparison = Column(JSONB if os.getenv("DATABASE_URL", "").startswith("postgresql") else JSON, nullable=False)
     items = Column(JSONB if os.getenv("DATABASE_URL", "").startswith("postgresql") else JSON, nullable=False)
-    category = Column(String(100), nullable=False)
+    category = Column(String(100), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    comparison = relationship("Comparison", back_populates="conversation")
-    user = relationship("User", back_populates="conversations")
+    
+    # Composite index for common query patterns
+    __table_args__ = (
+        Index('ix_comparisons_category_created', 'category', 'created_at'),
+    )
 
 
 class ComparisonCache(Base):
@@ -150,4 +110,24 @@ class Item(Base):
     comparison_count = Column(Integer, default=0)  # How many times this item was compared
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Feedback(Base):
+    """Feedback model for user ratings and comments on comparisons.
+    
+    References comparisons table.
+    """
+    __tablename__ = "feedback"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    comparison_id = Column(String(36), nullable=False, index=True)  # Reference to comparison's comparison_id field
+    rating = Column(Integer, nullable=False)  # 1-5 star rating
+    comment = Column(Text, nullable=True)  # Optional text comment
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Composite index for common queries
+    __table_args__ = (
+        Index('ix_feedback_comparison_created', 'comparison_id', 'created_at'),
+    )
 

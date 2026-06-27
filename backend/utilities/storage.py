@@ -7,24 +7,23 @@ and conversation follow-ups. It replaces the previous JSON file-based storage.
 
 from database.connection import get_db_session
 from database.repository import (
-    create_comparison,
-    get_user_comparisons,
-    delete_comparison as db_delete_comparison,
     create_shared_comparison,
     get_shared_comparison as db_get_shared_comparison,
     increment_shared_views,
-    create_conversation,
-    get_conversation as db_get_conversation,
-    add_message_to_conversation,
+    create_comparison,
+    get_comparison as db_get_comparison,
+    add_message_to_comparison,
+    get_user_comparisons,
     get_cached_comparison,
     cache_comparison,
+    db_delete_comparison,
 )
 from datetime import datetime
 import uuid
 from langchain_community.chat_message_histories import ChatMessageHistory
 import json
 
-# In-memory storage for active conversation sessions
+# In-memory storage for active comparison sessions
 conversation_memory = {}
 
 
@@ -48,7 +47,7 @@ def load_history(user_id: str, limit: int = 100, offset: int = 0, category: str 
                 "timestamp": comp.created_at.isoformat(),
                 "category": comp.category,
                 "items": comp.items,
-                "result": comp.result,
+                "result": comp.original_comparison if isinstance(comp.original_comparison, dict) else {},
                 "id": str(comp.id)
             }
             for comp in comparisons
@@ -74,7 +73,7 @@ def save_history(user_id: str, category: str, items: list, result: dict):
             "timestamp": comparison.created_at.isoformat(),
             "category": comparison.category,
             "items": comparison.items,
-            "result": comparison.result,
+            "result": comparison.original_comparison,
             "id": str(comparison.id)
         }
 
@@ -98,31 +97,30 @@ def load_shared(share_id: str):
                 "items": shared.items,
                 "result": shared.result,
                 "created_at": shared.created_at.isoformat(),
-                "user_id": str(shared.user_id) if shared.user_id else None,
+                "user_id": None,  # SharedComparison doesn't track user_id
                 "views": shared.views
             }
         return None
 
 
 def save_shared(share_id: str, comparison_id: str, category: str, items: list, 
-               result: dict, user_id: str = None):
+               result: dict):
     """
     Save shared comparison to database.
     
     Args:
         share_id: Unique share identifier
-        comparison_id: Original comparison ID
+        comparison_id: Comparison ID (the comparison_id from comparison)
         category: Comparison category
         items: List of items compared
         result: Comparison result dictionary
-        user_id: Optional user identifier
     
     Returns:
         Created shared comparison entry
     """
     with get_db_session() as db:
         shared = create_shared_comparison(
-            db, comparison_id, share_id, category, items, result, user_id
+            db, comparison_id, share_id, category, items, result
         )
         return {
             "share_id": shared.share_id,
@@ -149,54 +147,54 @@ def increment_shared_view_count(share_id: str):
         return shared.views if shared else 0
 
 
-def get_conversation_from_db(comparison_id: str):
+def get_comparison_from_db(comparison_id: str):
     """
-    Get conversation from database by comparison_id.
+    Get comparison from database by comparison_id.
     
     Args:
         comparison_id: Comparison identifier
     
     Returns:
-        Conversation data dictionary or None
+        Comparison data dictionary or None
     """
     with get_db_session() as db:
-        conversation = db_get_conversation(db, comparison_id)
-        if conversation:
+        comparison = db_get_comparison(db, comparison_id)
+        if comparison:
             return {
-                "comparison_id": str(conversation.comparison_id),
-                "messages": conversation.messages,
-                "original_comparison": conversation.original_comparison,
-                "items": conversation.items,
-                "category": conversation.category
+                "comparison_id": str(comparison.comparison_id),
+                "messages": comparison.messages,
+                "original_comparison": comparison.original_comparison,
+                "items": comparison.items,
+                "category": comparison.category
             }
         return None
 
 
-def save_conversation_to_db(comparison_id: str, original_comparison: dict,
+def save_comparison_to_db(comparison_id: str, original_comparison: dict,
                             items: list, category: str, user_id: str = None):
     """
-    Save conversation to database.
+    Save comparison to database.
     
     Args:
         comparison_id: Comparison identifier
         original_comparison: Original comparison result
         items: List of items compared
         category: Comparison category
-        user_id: Optional user identifier
+        user_id: Optional user identifier (not used, kept for compatibility)
     
     Returns:
-        Created conversation
+        Created comparison
     """
     with get_db_session() as db:
-        conversation = create_conversation(
+        comparison = create_comparison(
             db, comparison_id, user_id, original_comparison, items, category
         )
-        return conversation
+        return comparison
 
 
-def add_conversation_message(comparison_id: str, role: str, content: str):
+def add_comparison_message(comparison_id: str, role: str, content: str):
     """
-    Add a message to conversation in database.
+    Add a message to comparison's follow-up conversation in database.
     
     Args:
         comparison_id: Comparison identifier
@@ -204,7 +202,7 @@ def add_conversation_message(comparison_id: str, role: str, content: str):
         content: Message content
     """
     with get_db_session() as db:
-        add_message_to_conversation(db, comparison_id, role, content)
+        add_message_to_comparison(db, comparison_id, role, content)
 
 
 def get_cached_comparison_result(category: str, items: list, user_preferences: dict = None):

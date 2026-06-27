@@ -1,0 +1,53 @@
+{
+  "mcpServers": {
+    "compair": {
+      "url": "http://localhost:8001",
+      "description": "COMPAIR Dashboard Analytics MCP Server",
+      "tools": [
+        {
+          "name": "get_dashboard_overview",
+          "description": "Get complete dashboard overview with all metrics"
+        },
+        {
+          "name": "get_comparison_quality",
+          "description": "Get comparison quality metrics and assessment"
+        },
+        {
+          "name": "get_decision_confidence",
+          "description": "Get decision confidence metrics with insights"
+        },
+        {
+          "name": "get_preference_usage",
+          "description": "Get preference usage breakdown"
+        },
+        {
+          "name": "get_category_insights",
+          "description": "Get category distribution insights"
+        },
+        {
+          "name": "get_popular_comparisons",
+          "description": "Get most popular comparison pairs"
+        },
+        {
+          "name": "get_user_feedback_summary",
+          "description": "Get user feedback - likes and improvements"
+        },
+        {
+          "name": "get_activity_trends",
+          "description": "Get activity trends over time"
+        },
+        {
+          "name": "generate_insights_report",
+          "description": "Generate comprehensive insights with recommendations"
+        }
+      ]
+    }
+  }
+}
+
+
+
+
+
+
+

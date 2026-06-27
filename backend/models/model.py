@@ -90,3 +90,10 @@ class ComparisonOutput(BaseModel):
         description="Error or informational message"
     )
 
+
+class FeedbackRequest(BaseModel):
+    """Request model for submitting feedback."""
+    comparison_id: str
+    rating: int = Field(ge=1, le=5, description="Rating from 1-5 stars")
+    comment: Optional[str] = None
+    user_id: Optional[str] = None

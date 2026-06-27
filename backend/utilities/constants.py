@@ -19,8 +19,8 @@ OPENAI_TEMPERATURE = 0.7
 # Brave Search API Configuration
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
 BRAVE_API_URL = "https://api.search.brave.com/res/v1/web/search"
-BRAVE_SEARCH_COUNT = int(os.getenv("BRAVE_SEARCH_COUNT", "5"))  # Number of search results to fetch
-BRAVE_SEARCH_SNIPPETS = int(os.getenv("BRAVE_SEARCH_SNIPPETS", "5"))  # Number of snippets to include in summary
+BRAVE_SEARCH_COUNT = int(os.getenv("BRAVE_SEARCH_COUNT", "20"))  # Number of search results to fetch
+BRAVE_SEARCH_SNIPPETS = int(os.getenv("BRAVE_SEARCH_SNIPPETS", "10"))  # Number of snippets to include in summary
 BRAVE_SEARCH_TIMEOUT = int(os.getenv("BRAVE_SEARCH_TIMEOUT", "10"))  # API request timeout in seconds
 
 # FastAPI Configuration

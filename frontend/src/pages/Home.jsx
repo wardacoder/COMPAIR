@@ -1,15 +1,17 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
-import ThemeToggle from "../components/ThemeToggle";
+import Navbar from "../Navbar";
 
 export default function Home() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-blue-50 via-white to-sky-50 dark:from-slate-950 dark:via-slate-900 dark:to-black text-center px-6 overflow-hidden transition-colors duration-500">
-      {/* Theme Toggle */}
-      <ThemeToggle />
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-sky-50 dark:from-slate-950 dark:via-slate-900 dark:to-black overflow-hidden transition-colors duration-500">
+      {/* Navigation Bar */}
+      <Navbar />
+      
+      <div className="flex-1 flex flex-col justify-center items-center text-center px-6">
 
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -93,25 +95,26 @@ export default function Home() {
           </div>
 
           <div className="p-6 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-slate-700 hover:shadow-xl transition-all duration-300">
-            <div className="text-4xl mb-3">🔗</div>
+            <div className="text-4xl mb-3">💬</div>
             <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-2">
-              Shareable Links
+              Ask Follow-up Questions
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Share comparisons with friends & family
+              Get answers to your specific questions
             </p>
           </div>
 
           <div className="p-6 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-slate-700 hover:shadow-xl transition-all duration-300">
-            <div className="text-4xl mb-3">💬</div>
+            <div className="text-4xl mb-3">📄</div>
             <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-2">
-              AI Follow-ups
+              Comparison Reports
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Ask questions about your comparisons
+              Detailed side-by-side analysis
             </p>
           </div>
         </motion.div>
+      </div>
       </div>
     </div>
   );

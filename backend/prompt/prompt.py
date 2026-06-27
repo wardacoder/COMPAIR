@@ -1,5 +1,5 @@
 """
-Prompt templates for the COMPAIR API.
+Prompt templates for the CompareMate API.
 
 This module contains all prompt templates used by the LangChain LLM chains
 for comparison and follow-up question handling.
@@ -26,13 +26,19 @@ def get_comparison_prompt(winner_instructions: str, format_instructions: str):
 
 Your task is to provide a detailed comparison between the items the user provides.
 
-🔍 CRITICAL: You will receive REAL-TIME SEARCH RESULTS from Brave Search API. 
-- Use the search results as your PRIMARY and MOST RELIABLE source of information
-- ONLY use facts that are present in the search results
-- If specific information is not in the search results, explicitly state "Information not found in search results" rather than guessing
-- Do NOT make up specifications, prices, features, or any factual data
-- If search results are available, they take precedence over your training data
-- This is essential to prevent hallucinations and ensure accuracy
+🔍 INFORMATION SOURCES (in order of priority):
+1. REAL-TIME SEARCH RESULTS (if provided) - Use as PRIMARY source for current prices, specs, latest features
+2. YOUR KNOWLEDGE - Use for general characteristics, well-known facts, and typical specifications
+
+📋 RULES FOR HANDLING INFORMATION:
+- When search results provide specific data (prices, specs), USE THAT DATA
+- When search results are incomplete, use your knowledge to fill gaps with reasonable, accurate information
+- NEVER write "Information not found" or "N/A" in the comparison table - always provide useful content
+- For prices: If exact price isn't available, provide a typical price range (e.g., "$799-$899")
+- For specs: If exact spec isn't found, provide the commonly known specification
+- For features: Describe based on general product knowledge if search results are limited
+- Be confident and informative - users want helpful comparisons, not "information not found" messages
+- Only state uncertainty if you genuinely don't know anything about an item
 
 📋 OUTPUT FORMAT:
 
@@ -52,11 +58,17 @@ Return a JSON object with these fields:
 
 3. "pros": An array of advantages. Format each as "[Item Name]: [advantage]"
    Example: ["iPhone 15: Excellent ecosystem integration", "Samsung S24: Superior display technology"]
+   
+   CRITICAL: You MUST provide pros for EVERY item being compared. Use the EXACT item names as provided.
+   If an item has no obvious pros, think creatively and provide at least 2-3 pros based on general characteristics.
 
 4. "cons": An array of disadvantages. Format each as "[Item Name]: [disadvantage]"
    Example: ["iPhone 15: Limited customization", "Samsung S24: Bloatware on device"]
+   
+   CRITICAL: You MUST provide cons for EVERY item being compared. Use the EXACT item names as provided.
+   If an item has no obvious cons, think critically and provide at least 2-3 cons based on trade-offs or limitations.
 
-For each item there should be 3 specific pros and 3 specific cons.
+For each item there should be 3 specific pros and 3 specific cons. DO NOT skip any items - all items must have both pros and cons listed.
 
 5. "recommendation": A balanced recommendation using the actual item names and keep it around 4 to 5 sentences long.
      
@@ -104,7 +116,7 @@ Items to compare: {inputs['items']}
 
 Please compare these items: {inputs['items']}
 
-Remember: Use ONLY the information from the search results provided above. If information is missing, state that clearly rather than inferring."""
+IMPORTANT: Provide a COMPLETE and USEFUL comparison. Use search results when available, but supplement with your knowledge to ensure every field has helpful information. Never leave fields empty or say "information not found"."""
         
         return [
             SystemMessage(content=system_message_content),
@@ -175,5 +187,4 @@ You MUST NOT include a personalized winner. Instead:
 Example recommendation:
 "The iPhone 15 is ideal for users in the Apple ecosystem. The Samsung S24 offers more customization and flexibility."
 """
-
 

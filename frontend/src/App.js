@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect, createContext, useContext } from "react";
 import Home from "./pages/Home";
 import Compare from "./pages/Compare";
-import History from "./pages/History";
+import Dashboard from "./pages/Dashboard";
 
 // Create Theme Context
 export const ThemeContext = createContext();
@@ -43,7 +43,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/compare" element={<Compare />} />
-          <Route path="/history" element={<History />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </BrowserRouter>
     </ThemeContext.Provider>

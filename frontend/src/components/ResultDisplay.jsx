@@ -241,47 +241,280 @@ export default function ResultDisplay({ result, onSave, onExport, onReset }) {
         </div>
       )}
 
-      {/* Pros */}
-      {hasPros && (
+      {/* Pros & Cons Per Item */}
+      {(hasPros || hasCons) && (
         <div className="mb-10 pb-8 border-b-2 border-gray-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-              <ThumbsUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-2 bg-gradient-to-r from-emerald-100 to-red-100 dark:from-emerald-900/30 dark:to-red-900/30 rounded-lg">
+              <ClipboardList className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </div>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              Pros
+              Pros & Cons
             </h2>
           </div>
-          <ul className="space-y-2 ml-2">
-            {result.pros.map((pro, idx) => (
-              <li key={idx} className="flex items-start gap-3">
-                <span className="text-emerald-600 dark:text-emerald-400 text-xl mt-0.5">✓</span>
-                <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{pro}</span>
+          
+          {/* Group pros/cons by item */}
+          {(() => {
+            // Parse pros and cons to group by item name
+            const itemData = {};
+            
+            // Get unique item names from the result
+            const itemNames = result.items || [];
+            itemNames.forEach(name => {
+              itemData[name] = { pros: [], cons: [] };
+            });
+            
+            // Helper function to find best matching item name
+            const findMatchingItem = (proConText) => {
+              // Try exact match first
+              const exactMatch = itemNames.find(name => 
+                name.toLowerCase() === proConText.toLowerCase()
+              );
+              if (exactMatch) return exactMatch;
+              
+              // Try partial match (item name contains text or text contains item name)
+              const partialMatch = itemNames.find(name => {
+                const nameLower = name.toLowerCase();
+                const textLower = proConText.toLowerCase();
+                return nameLower.includes(textLower) || textLower.includes(nameLower);
+              });
+              if (partialMatch) return partialMatch;
+              
+              // Try word-by-word matching (e.g., "Toyota Camry" matches "Camry")
+              const words = proConText.toLowerCase().split(/\s+/);
+              const wordMatch = itemNames.find(name => {
+                const nameWords = name.toLowerCase().split(/\s+/);
+                return words.some(word => nameWords.includes(word)) ||
+                       nameWords.some(word => words.includes(word));
+              });
+              if (wordMatch) return wordMatch;
+              
+              return null;
+            };
+            
+            // Parse pros - format: "Item Name: description"
+            if (result.pros) {
+              result.pros.forEach(pro => {
+                const colonIndex = pro.indexOf(':');
+                if (colonIndex > 0) {
+                  const itemName = pro.substring(0, colonIndex).trim();
+                  const description = pro.substring(colonIndex + 1).trim();
+                  
+                  // Skip if description is empty or indicates missing info
+                  if (!description || 
+                      description.toLowerCase().includes('not found') ||
+                      description.toLowerCase().includes('n/a') ||
+                      description.toLowerCase().includes('no pros')) {
+                    return;
+                  }
+                  
+                  // Find matching item using improved matching
+                  const matchedItem = findMatchingItem(itemName);
+                  if (matchedItem && itemData[matchedItem]) {
+                    itemData[matchedItem].pros.push(description);
+                  } else {
+                    // If no match found, try to distribute evenly or add to items missing pros
+                    const itemsWithoutPros = itemNames.filter(name => itemData[name].pros.length === 0);
+                    if (itemsWithoutPros.length > 0) {
+                      itemData[itemsWithoutPros[0]].pros.push(description);
+                    } else {
+                      // All items have pros, add to the one with fewest
+                      const itemWithFewestPros = itemNames.reduce((min, name) => 
+                        itemData[name].pros.length < itemData[min].pros.length ? name : min
+                      );
+                      itemData[itemWithFewestPros].pros.push(description);
+                    }
+                  }
+                } else {
+                  // No colon format - try to find item name in the text itself
+                  const matchedItem = findMatchingItem(pro);
+                  if (matchedItem && itemData[matchedItem]) {
+                    itemData[matchedItem].pros.push(pro);
+                  } else {
+                    // Distribute to item missing pros
+                    const itemsWithoutPros = itemNames.filter(name => itemData[name].pros.length === 0);
+                    if (itemsWithoutPros.length > 0) {
+                      itemData[itemsWithoutPros[0]].pros.push(pro);
+                    }
+                  }
+                }
+              });
+            }
+            
+            // Parse cons - format: "Item Name: description"
+            if (result.cons) {
+              result.cons.forEach(con => {
+                const colonIndex = con.indexOf(':');
+                if (colonIndex > 0) {
+                  const itemName = con.substring(0, colonIndex).trim();
+                  const description = con.substring(colonIndex + 1).trim();
+                  
+                  // Skip if description is empty or indicates missing info
+                  if (!description || 
+                      description.toLowerCase().includes('not found') ||
+                      description.toLowerCase().includes('n/a') ||
+                      description.toLowerCase().includes('no cons')) {
+                    return;
+                  }
+                  
+                  // Find matching item using improved matching
+                  const matchedItem = findMatchingItem(itemName);
+                  if (matchedItem && itemData[matchedItem]) {
+                    itemData[matchedItem].cons.push(description);
+                  } else {
+                    // If no match found, try to distribute evenly or add to items missing cons
+                    const itemsWithoutCons = itemNames.filter(name => itemData[name].cons.length === 0);
+                    if (itemsWithoutCons.length > 0) {
+                      itemData[itemsWithoutCons[0]].cons.push(description);
+                    } else {
+                      // All items have cons, add to the one with fewest
+                      const itemWithFewestCons = itemNames.reduce((min, name) => 
+                        itemData[name].cons.length < itemData[min].cons.length ? name : min
+                      );
+                      itemData[itemWithFewestCons].cons.push(description);
+                    }
+                  }
+                } else {
+                  // No colon format - try to find item name in the text itself
+                  const matchedItem = findMatchingItem(con);
+                  if (matchedItem && itemData[matchedItem]) {
+                    itemData[matchedItem].cons.push(con);
+                  } else {
+                    // Distribute to item missing cons
+                    const itemsWithoutCons = itemNames.filter(name => itemData[name].cons.length === 0);
+                    if (itemsWithoutCons.length > 0) {
+                      itemData[itemsWithoutCons[0]].cons.push(con);
+                    }
+                  }
+                }
+              });
+            }
+            
+            // Fallback: If any item has no pros/cons, try to extract from unparsed pros/cons
+            const unparsedPros = result.pros || [];
+            const unparsedCons = result.cons || [];
+            
+            // Check for items missing pros/cons and try to fill them
+            Object.entries(itemData).forEach(([itemName, data]) => {
+              if (data.pros.length === 0 && unparsedPros.length > 0) {
+                // Try to find any pro that mentions this item
+                const matchingPros = unparsedPros.filter(pro => {
+                  const proLower = pro.toLowerCase();
+                  const itemLower = itemName.toLowerCase();
+                  return proLower.includes(itemLower) || itemLower.includes(proLower.split(':')[0]?.toLowerCase() || '');
+                });
+                if (matchingPros.length > 0) {
+                  matchingPros.forEach(pro => {
+                    const colonIndex = pro.indexOf(':');
+                    if (colonIndex > 0) {
+                      data.pros.push(pro.substring(colonIndex + 1).trim());
+                    } else {
+                      data.pros.push(pro);
+                    }
+                  });
+                }
+              }
+              
+              if (data.cons.length === 0 && unparsedCons.length > 0) {
+                // Try to find any con that mentions this item
+                const matchingCons = unparsedCons.filter(con => {
+                  const conLower = con.toLowerCase();
+                  const itemLower = itemName.toLowerCase();
+                  return conLower.includes(itemLower) || itemLower.includes(conLower.split(':')[0]?.toLowerCase() || '');
+                });
+                if (matchingCons.length > 0) {
+                  matchingCons.forEach(con => {
+                    const colonIndex = con.indexOf(':');
+                    if (colonIndex > 0) {
+                      data.cons.push(con.substring(colonIndex + 1).trim());
+                    } else {
+                      data.cons.push(con);
+                    }
+                  });
+                }
+              }
+            });
+            
+            return (
+              <div className="space-y-6">
+                {Object.entries(itemData).map(([itemName, data], idx) => (
+                  <div 
+                    key={idx} 
+                    className={`rounded-2xl overflow-hidden border-2 shadow-lg
+                      ${hasWinner && itemName === result.personalized_winner 
+                        ? 'border-yellow-400 dark:border-yellow-500 ring-2 ring-yellow-400/30' 
+                        : 'border-gray-200 dark:border-slate-600'}`}
+                  >
+                    {/* Item Header */}
+                    <div className={`px-5 py-4 flex items-center gap-3
+                      ${hasWinner && itemName === result.personalized_winner 
+                        ? 'bg-gradient-to-r from-yellow-100 via-amber-50 to-yellow-100 dark:from-yellow-900/40 dark:via-amber-900/30 dark:to-yellow-900/40' 
+                        : 'bg-gradient-to-r from-blue-50 via-slate-50 to-blue-50 dark:from-slate-700 dark:via-slate-750 dark:to-slate-700'}`}
+                    >
+                      {hasWinner && itemName === result.personalized_winner && (
+                        <Trophy className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                      )}
+                      <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                        {itemName}
+                      </h3>
+                      {hasWinner && itemName === result.personalized_winner && (
+                        <span className="ml-auto px-3 py-1 bg-yellow-400 dark:bg-yellow-500 text-yellow-900 text-sm font-bold rounded-full">
+                          WINNER
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Pros & Cons Table */}
+                    <div className="grid grid-cols-2 divide-x-2 divide-gray-200 dark:divide-slate-600">
+                      {/* Pros Column */}
+                      <div className="bg-emerald-50/50 dark:bg-emerald-900/10">
+                        <div className="px-4 py-3 bg-emerald-100 dark:bg-emerald-900/30 border-b-2 border-emerald-200 dark:border-emerald-800/50">
+                          <div className="flex items-center gap-2">
+                            <ThumbsUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                            <span className="font-bold text-emerald-700 dark:text-emerald-300">Pros</span>
+                          </div>
+                        </div>
+                        <ul className="p-4 space-y-3">
+                          {data.pros.length > 0 ? (
+                            data.pros.map((pro, proIdx) => (
+                              <li key={proIdx} className="flex items-start gap-2">
+                                <span className="text-emerald-500 dark:text-emerald-400 mt-0.5 flex-shrink-0">✓</span>
+                                <span className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">{pro}</span>
               </li>
-            ))}
+                            ))
+                          ) : (
+                            <li className="text-gray-400 dark:text-gray-500 text-sm italic">No pros listed</li>
+                          )}
           </ul>
         </div>
-      )}
-
-      {/* Cons */}
-      {hasCons && (
-        <div className="mb-10 pb-8 border-b-2 border-gray-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                      
+                      {/* Cons Column */}
+                      <div className="bg-red-50/50 dark:bg-red-900/10">
+                        <div className="px-4 py-3 bg-red-100 dark:bg-red-900/30 border-b-2 border-red-200 dark:border-red-800/50">
+                          <div className="flex items-center gap-2">
               <ThumbsDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+                            <span className="font-bold text-red-700 dark:text-red-300">Cons</span>
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              Cons
-            </h2>
           </div>
-          <ul className="space-y-2 ml-2">
-            {result.cons.map((con, idx) => (
-              <li key={idx} className="flex items-start gap-3">
-                <span className="text-red-600 dark:text-red-400 text-xl mt-0.5">✗</span>
-                <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{con}</span>
+                        <ul className="p-4 space-y-3">
+                          {data.cons.length > 0 ? (
+                            data.cons.map((con, conIdx) => (
+                              <li key={conIdx} className="flex items-start gap-2">
+                                <span className="text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0">✗</span>
+                                <span className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">{con}</span>
               </li>
-            ))}
+                            ))
+                          ) : (
+                            <li className="text-gray-400 dark:text-gray-500 text-sm italic">No cons listed</li>
+                          )}
           </ul>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 

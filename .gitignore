@@ -1,16 +1,21 @@
 # ===== Python (backend) =====
 __pycache__/
 *.pyc
+*.db
 .env
-*.json
 
 # ===== Node.js / React (frontend) =====
 node_modules/
 dist/
 build/
 
+# ===== Data & Docker volumes =====
+data/
+
 # ===== OS / IDE / Misc =====
 .DS_Store
 .vscode/
 .idea/
 *.log
+# Backup files
+backups/

@@ -1,7 +1,7 @@
 # COMPAIR  
 **Intelligent decision-making through structured AI comparisons**
 
-A full-stack web application that transforms decision paralysis into clarity. Built with React.js and FastAPI, and fully containerized with Docker, COMPAIR uses GPT-4o, LangChain, Brave Search, and structured JSON validation to deliver grounded, personalized comparisons across any category, including gadgets, cars, technologies, destinations, and more.
+A full-stack web application that transforms decision paralysis into clarity. Built with React.js and FastAPI, and fully containerized with Docker, COMPAIR uses GPT-4o, LangChain, Brave Search, structured JSON validation, and an MCP (Model Context Protocol) layer to deliver grounded, personalized comparisons across any category, including gadgets, cars, technologies, destinations, and more.
 
 ---
 
@@ -42,15 +42,26 @@ Choosing between multiple options usually means:
 - COMPAIR maintains conversation memory for each comparison  
 - Follow-up answers stay relevant without restarting any session  
 
-### 📚 History and Sharing  
-- Stores comparisons in PostgreSQL using JSONB  
-- Allows users to revisit, manage, and organize past comparisons  
-- Generates public shareable links for quick access and collaboration  
+### 📊 Analytics Dashboard  
+- Dedicated dashboard page with time-range filtering (7, 30, 90 days)  
+- Displays total comparisons, category breakdowns, popular comparison pairs, and decision confidence metrics  
+- Tracks user feedback statistics including ratings and improvement comments  
+- Integrated AI chat lets users ask natural-language questions about their comparison history  
 
-### 📊 Insights and Analytics  
-- Tracks popular items across categories  
-- Highlights trending comparison categories  
-- Provides high-level usage patterns  
+### ⭐ User Feedback System  
+- Collects star ratings for accuracy and winner match quality after each comparison  
+- Separate feedback paths for personalized and neutral comparisons  
+- Stores user comments (what worked, what could improve) in PostgreSQL for analytics  
+
+### 🔌 MCP (Model Context Protocol) Layer  
+- A dedicated FastAPI MCP server runs alongside the main backend (port 8001)  
+- Exposes 9 structured tools covering dashboard metrics, feedback summaries, category insights, activity trends, and AI-generated reports  
+- Any MCP-compatible AI assistant (Grok, ChatGPT, Claude) can connect and query COMPAIR data programmatically  
+- `mcp_config.json` provided for easy AI assistant configuration  
+
+### 📚 Comparison History and Sharing  
+- Stores all comparisons in PostgreSQL using JSONB  
+- Generates public shareable links for quick access and collaboration  
 
 ### 🎨 Modern User Experience  
 - Built with React 18 and TailwindCSS  
@@ -80,12 +91,14 @@ COMPAIR is designed as a modular, scalable, and grounded full-stack system that 
 - Brave Search integration  
 - LangChain for GPT-4o orchestration and output parsing  
 - Conversation memory for follow-up interactions  
+- MCP server (separate FastAPI service on port 8001) exposing dashboard data as AI-callable tools  
 - Comprehensive error handling and logging  
 
 ### AI Reasoning Layer  
 - GPT-4o for structured and grounded comparisons  
+- Groq LLM for analytics chat responses via the MCP layer  
 - Real-time data from Brave Search  
-- Dynamic prompt construction using system and user messages  
+- Dynamic prompt construction using system and human messages  
 - Strict schema enforcement with PydanticOutputParser  
 
 ---
@@ -130,7 +143,10 @@ Supports:
 ```
 COMPAIR/
 ├── backend/
-│   ├── main.py
+│   ├── main.py                    # Core API (port 8000)
+│   ├── mcp_server.py              # MCP server — AI tool layer (port 8001)
+│   ├── grok_mcp_client.py         # MCP client for AI assistant integration
+│   ├── analytics_chat_endpoint.py # Analytics chat API endpoint
 │   ├── prompt/
 │   ├── models/
 │   ├── utilities/
@@ -139,11 +155,14 @@ COMPAIR/
 ├── frontend/
 │   ├── public/
 │   ├── src/
+│   │   ├── components/            # Includes AnalyticsChat, FeedbackSection
+│   │   └── pages/                 # Compare, Dashboard, Home
 │   └── package.json
 │
-├── Dockerfile
-├── docker-compose.yml
-├── .env (ignored)
+├── docs/                          # Technical deep-dives and implementation notes
+├── docker-compose.yml             # 4-service orchestration
+├── mcp_config.json                # AI assistant MCP configuration
+├── .env.example                   # Environment template
 ├── images/
 └── README.md
 ```
@@ -155,19 +174,22 @@ COMPAIR/
 COMPAIR includes a complete, ready-to-run Docker setup.
 
 ### Containers  
-- Backend (FastAPI with GPT-4o integration)  
-- Frontend (React served with Nginx)  
+- Backend (FastAPI with GPT-4o integration) — port 8000  
+- MCP Server (AI tool layer) — port 8001  
+- Frontend (React served with Nginx) — port 3000  
 - PostgreSQL (JSONB optimized)  
 
 ### Quick Start  
 ```bash
+cp .env.example .env   # fill in your API keys
 docker-compose up --build
 ```
 
 ### Access  
 - Frontend: http://localhost:3000  
 - Backend API: http://localhost:8000  
-- Documentation: http://localhost:8000/docs  
+- MCP Server: http://localhost:8001  
+- API Documentation: http://localhost:8000/docs  
 
 ---
 
@@ -208,10 +230,10 @@ This project evolved from a simple comparison tool into a grounded, database-bac
 Designed and delivered a complete React and FastAPI system with clean API contracts and structured data flows between frontend, backend, AI reasoning, and storage layers.
 
 ### Backend Engineering  
-Built a production-ready backend with Brave Search grounding, a 24-hour caching layer, dynamic prompt templates, conversation memory, category filtering, and the repository pattern for clean data access.
+Built a production-ready backend with Brave Search grounding, a 24-hour PostgreSQL-backed caching layer, dynamic prompt templates, conversation memory, category filtering, a dedicated MCP server exposing structured AI tools, and the repository pattern for clean data access.
 
 ### AI Integration and Prompt Engineering  
-Developed a reliable prompt-engineering workflow using GPT-4o, LangChain, PydanticOutputParser, system and human messages, real-time grounding, anti-hallucination strategies, and dynamic prompt construction.
+Developed a reliable prompt-engineering workflow using GPT-4o, LangChain, PydanticOutputParser, system and human messages, real-time grounding, anti-hallucination strategies, and dynamic prompt construction. Extended the AI layer with Groq for analytics chat and MCP tool-calling for structured data queries.
 
 ### Database Design and Data Engineering  
 Implemented PostgreSQL with JSONB storage, optimized indexing, TTL caches, history management, public sharing, item analytics, and stable data flows.
@@ -235,4 +257,5 @@ LinkedIn: https://www.linkedin.com/in/wardaulhasan
 GitHub: https://github.com/wardacoder  
 
 > COMPAIR reflects my goal to build systems where intelligence meets structure, practical purpose, and thoughtful design.
+
 
